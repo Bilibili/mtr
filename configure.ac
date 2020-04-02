@@ -113,7 +113,7 @@ AS_IF([test "x$with_ncurses" = "xyes"],
   # Prefer ncurses over curses, if both are available.
   # (On Solaris 11.3, ncurses builds and links for us, but curses does not.)
   [AC_SEARCH_LIBS(
-    [initscr], [ncurses curses],
+    [initscr], [ncursesw curses],
     [AC_DEFINE([HAVE_CURSES], [1], [Define if a curses library available])],
     [with_ncurses=no])
 ])
@@ -140,6 +140,31 @@ AS_IF([test "x$WANTS_IPV6" = "xyes"], [
   AC_DEFINE([ENABLE_IPV6], [1], [Define to enable IPv6])
   USES_IPV6=yes
 ])
+
+AC_ARG_WITH([biliip],
+[  --with-biliip        use biliip lookup ip],
+[biliip="${withval}"], [biliip=no])
+
+AC_ARG_WITH([ipdotnet],
+[  --with-ipdotnet        use ipdotnet ipdb to lookup ip],
+[ipdotnet="${withval}"], [ipdotnet=no])
+
+if test "x$biliip" = "xyes"; then
+  if test "x$ipdotnet" = "xyes"; then
+    AC_MSG_ERROR([Cannot enable both of IP Resolve Library])
+  fi
+  AC_DEFINE(ENABLE_BILIIP, [], [Define if you want to have biliip.])
+fi
+
+if test "x$ipdotnet" = "xyes"; then
+  AC_DEFINE(ENABLE_IPDOTNET, [], [Define if you want to have ipdotnet ipdb.])
+  PKG_CHECK_MODULES([JSON_C], [json-c], [], [AC_MSG_ERROR([Please install json-c first, libjson-c-dev / json-c-devel])])
+  CFLAGS="$CFLAGS $JSON_C_CFLAGS -Iipdb-c/"
+  LIBS="$LIBS $JSON_C_LIBS"
+fi
+
+AM_CONDITIONAL([WITH_IPDOTNET], [test "x$ipdotnet" = "xyes"])
+
 
 AC_CHECK_FUNC([socket], [],
   [AC_CHECK_LIB([socket], [socket], [], [AC_MSG_ERROR([No socket library found])])])
@@ -258,6 +283,8 @@ echo "libasan :$with_libasan"
 echo "ipv6    :$USES_IPV6"
 echo "ipinfo  :$with_ipinfo"
 echo "ncurses :$with_ncurses"
+echo "biliip  :$biliip"
+echo "ipip.net:$ipdotnet"
 echo "gtk     :$with_gtk"
 echo "cap     :$have_cap"
 echo "libs    :$LIBS"

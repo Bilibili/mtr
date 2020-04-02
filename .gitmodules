@@ -1,0 +1,3 @@
+[submodule "ipdb-c"]
+	path = ipdb-c
+	url = https://github.com/ipipdotnet/ipdb-c.git

@@ -85,6 +85,10 @@ if WITH_GTK
 mtr_SOURCES += ui/gtk.c
 endif
 
+if WITH_IPDOTNET
+mtr_SOURCES += ipdb-c/ipdb.c
+endif
+
 if WITH_LIBASAN
 ASAN_CFLAGS = -fno-omit-frame-pointer
 ASAN_CFLAGS += -fsanitize=undefined

@@ -41,6 +41,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
+#include <locale.h>
 #include <ctype.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -164,6 +166,9 @@ static void __attribute__ ((__noreturn__)) usage(FILE * out)
           out);
 #ifdef HAVE_GTK
     fputs(" -g, --gtk                  use GTK+ xwindow interface\n", out);
+#endif
+#if defined(ENABLE_IPDOTNET) || defined(ENABLE_BILIIP)
+    fputs( "-R, --resolve-ip           resolve IP by IP Library", out);
 #endif
     fputs(" -n, --no-dns               do not resolve host names\n", out);
     fputs(" -b, --show-ips             show IP numbers and host names\n",
@@ -354,6 +359,9 @@ static void parse_arg(
         {"split", 0, NULL, 'p'},        /* BL */
         /* maybe above should change to -d 'x' */
 
+#if defined(ENABLE_IPDOTNET) || defined(ENABLE_BILIIP)
+        { "resolve-ip", 0, 0, 'R' },
+#endif
         {"no-dns", 0, NULL, 'n'},
         {"show-ips", 0, NULL, 'b'},
         {"order", 1, NULL, 'o'},        /* fields to display & their order */
@@ -422,6 +430,11 @@ static void parse_arg(
         case 'r':
             ctl->DisplayMode = DisplayReport;
             break;
+#if defined(ENABLE_IPDOTNET) || defined(ENABLE_BILIIP)
+        case 'R':
+            ctl->ip_resolve = 1;
+            break;
+#endif
         case 'w':
             ctl->reportwide = 1;
             ctl->DisplayMode = DisplayReport;
@@ -787,6 +800,7 @@ int main(
     ctl.ipinfo_max = -1;
     xstrncpy(ctl.fld_active, "LS NABWV", 2 * MAXFLD);
 
+    setlocale(LC_ALL,"");
     /*
        mtr used to be suid root.  It should not be with this version.
        We'll check so that we can notify people using installation
@@ -817,6 +831,86 @@ int main(
         char *name = argv[optind++];
         append_to_names(&names_head, name);
     }
+
+#ifdef ENABLE_IPDOTNET
+    if (ctl.ip_resolve) {
+        int err = ipdb_reader_new("/usr/local/opt/mtr/ipdotnet.ipdb", &ctl.reader);
+        if (err) {
+            fprintf( stderr, "mtr: Can't load ipdotnet library, please place ipdb to /usr/local/opt/mtr/ipdotnet.ipdb\n" );
+            exit( EXIT_FAILURE );
+        }
+        // if (!err) {
+        //     printf("ipdb build time: %li\n", ctl.reader->meta->build_time);
+        //     printf("ipdb ipv4 support: %i\n", ipdb_reader_is_ipv4_support(ctl.reader));
+        //     printf("ipdb ipv6 support: %i\n", ipdb_reader_is_ipv6_support(ctl.reader));
+        //     printf("ipdb language: ");
+        //     for (int i = 0; i < ctl.reader->meta->language_length; ++i) {
+        //         printf("%s ", ctl.reader->meta->language[i].name);
+        //     }
+        //     printf("\n");
+        //     printf("ipdb fields: ");
+        //     for (int i = 0; i < ctl.reader->meta->fields_length; ++i) {
+        //         printf("%s ", ctl.reader->meta->fields[i]);
+        //     }
+        //     printf("\n");
+        // }
+    }
+#endif
+#ifdef ENABLE_BILIIP
+    if (ctl.ip_resolve) {
+        ctl.biliip = (struct bb_biliip *)calloc(sizeof(struct bb_biliip), 1);
+        ctl.biliip->index_start = NULL;
+        ctl.biliip->index_end = NULL;
+        ctl.biliip->index_ptr = NULL;
+        ctl.biliip->nCount = 0;
+        ctl.biliip->fp = fopen("/usr/local/opt/mtr/biliip.dat", "rb");
+        if (!ctl.biliip->fp) {
+            fprintf( stderr, "mtr: Can't load biliip library, read error\n" );
+            exit( EXIT_FAILURE );
+        }
+        fseek(ctl.biliip->fp,1,SEEK_SET);
+        if (fread(&ctl.biliip->nCount,sizeof(int),1,ctl.biliip->fp)!=1){
+            fclose(ctl.biliip->fp);
+            fprintf( stderr, "mtr: Can't load biliip library, read error\n" );
+            exit( EXIT_FAILURE );
+        }
+        ctl.biliip->nCount = htonl(ctl.biliip->nCount);
+
+        ctl.biliip->index_start = (unsigned int *)calloc(ctl.biliip->nCount+1, sizeof(int));
+        ctl.biliip->index_end = (unsigned int *)calloc(ctl.biliip->nCount+1, sizeof(int));
+        ctl.biliip->index_ptr = (unsigned int *)calloc(ctl.biliip->nCount+1, sizeof(int));
+
+        fseek(ctl.biliip->fp,0,SEEK_END);
+        ctl.biliip->size = ftell(ctl.biliip->fp);
+        ctl.biliip->mmap=mmap(0, ctl.biliip->size, PROT_READ, MAP_SHARED, fileno(ctl.biliip->fp), 0);
+
+        fseek(ctl.biliip->fp, ctl.biliip_BASE_PTR, SEEK_SET);
+
+        if (fread((ctl.biliip->index_start+1), sizeof(int), ctl.biliip->nCount, ctl.biliip->fp) != ctl.biliip->nCount) {
+
+            fprintf( stderr, "mtr: Can't load biliip library, read error\n" );
+            exit( EXIT_FAILURE );
+        }
+        if (fread((ctl.biliip->index_end+1), sizeof(int), ctl.biliip->nCount, ctl.biliip->fp) != ctl.biliip->nCount) {
+
+            fprintf( stderr, "mtr: Can't load biliip library, read error\n" );
+            exit( EXIT_FAILURE );
+        }
+        if (fread((ctl.biliip->index_ptr+1), sizeof(int), ctl.biliip->nCount, ctl.biliip->fp) != ctl.biliip->nCount)  {
+
+            fprintf( stderr, "mtr: Can't load biliip library, read error\n" );
+            exit( EXIT_FAILURE );
+        }
+
+        int i;
+        for (i=1;i<=ctl.biliip->nCount;i++)
+        {
+            ctl.biliip->index_start[i] = htonl(ctl.biliip->index_start[i]);
+            ctl.biliip->index_end[i] = htonl(ctl.biliip->index_end[i]);
+            ctl.biliip->index_ptr[i] = htonl(ctl.biliip->index_ptr[i]);
+        }
+    }
+#endif
 
     /* default: localhost. */
     if (!names_head)
@@ -869,6 +963,12 @@ int main(
     }
 
     net_close();
+
+#ifdef ENABLE_IPDOTNET
+    if (ctl.ip_resolve) {
+        ipdb_reader_free(&ctl.reader);
+    }
+#endif
 
     while (names_head != NULL) {
         names_t *item = names_head;

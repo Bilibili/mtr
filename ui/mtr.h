@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdio.h>
 
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -78,6 +79,30 @@ typedef int time_t;
 typedef int socklen_t;
 #endif
 
+#ifdef ENABLE_BILIIP
+#define BILIIP_BASE_PTR 5
+
+struct bb_biliip
+{
+    FILE *fp;
+    char *mmap;
+    size_t ptr;
+    size_t size;
+    size_t nCount;
+    unsigned int *index_start;
+    unsigned int *index_end;
+    unsigned int *index_ptr;
+    int rsrc_id;
+};
+extern int ip_resolve;
+extern struct bb_biliip *biliip;
+
+#endif
+
+#ifdef ENABLE_IPDOTNET
+#include "ipdb.h"
+#endif
+
 struct mtr_ctl {
     int MaxPing;
     float WaitTime;
@@ -86,6 +111,15 @@ struct mtr_ctl {
     char *InterfaceName;
     char *InterfaceAddress;
     char LocalHostname[128];
+#if defined(ENABLE_IPDOTNET) || defined(ENABLE_BILIIP)
+    int ip_resolve;
+#endif
+#ifdef ENABLE_IPDOTNET
+    ipdb_reader *reader;
+#endif
+#ifdef ENABLE_BILIIP
+    struct bb_biliip *biliip;
+#endif
     int ipinfo_no;
     int ipinfo_max;
     int cpacketsize;            /* packet size used by ping */

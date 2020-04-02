@@ -1,109 +1,82 @@
-WHAT IS MTR?
-===
+## Linux安装方法(eg Debian,Ubuntu)
+### 编译
+  如果需要biliip解析功能，请使用以下命令编译:
 
-mtr combines the functionality of the 'traceroute' and 'ping' programs
-in a single network diagnostic tool.
-
-As mtr starts, it investigates the network connection between the host
-mtr runs on and a user-specified destination host.  After it
-determines the address of each network hop between the machines,
-it sends a sequence of ICMP ECHO requests to each one to determine the
-quality of the link to each machine.  As it does this, it prints
-running statistics about each machine.
-
-mtr is distributed under the GNU General Public License version 2.
-See the COPYING file for details.
-
-INSTALLING
-===
-
-If you're building this from a tarball, compiling mtr is as
-simple as:
-
-	./configure && make
-
-(in the past, there was a Makefile in the distribution that did
-the `./configure` for you and then ran make again with the generated
-Makefile, but this has suffered some bitrot. It didn't work well
-with git.)
-
-If you're building from the git repository, you'll need to run:
-
-	./bootstrap.sh && ./configure && make
-
-When it looks as if the compilation was succesful, you can
-test mtr with
-
-	sudo ./mtr <host>
-
-(fill in a hostname or IP address where it says <host>) or
-immediately continue on to installing:
-
-	make install
-
-Note that mtr-packet must be suid-root because it requires access to
-raw IP sockets.  See SECURITY for security information.
-
-Older versions used to require a non-existent path to GTK for a
-correct build of a non-gtk version while GTK was installed. This is
-no longer necessary. `./configure --without-gtk` should now work.
-If it doesn't, try `make WITHOUT_X11=YES` as the make step.
-
-On Solaris, you'll need to use GNU make to build.
-(Use `gmake` rather than `make`.)
-
-On Solaris (and possibly other systems) the "gtk" library may be
-installed in a directory where the dynamic linker refuses to look when
-a binary is setuid. Roman Shterenzon reports that adding
-        -Wl,-rpath=/usr/lib
-to the commandline will work if you are using gnu LD. He tells me that
-you're out of luck when you use the sun LD. That's not quite true, as
-you can move the gtk libraries to `/usr/lib` instead of leaving them in
-`/usr/local/lib`.  (when the ld tells you that `/usr/local/lib` is untrusted
-and `/usr/lib` is trusted, and you trust the gtk libs enough to want them
-in a setuid program, then there is something to say for moving them
-to the "trusted" directory.)
-
-Building on MacOS should not require any special steps.
-
-BUILDING FOR WINDOWS
-===
-
-Building for Windows requires Cygwin.  To obtain Cygwin, see
-https://cygwin.com/install.html.
-Next, re-run cygwin's `setup-x86.exe` (or `setup-x86_64.exe` if you're using 64bit cygwin) with the following arguments,  
-which will install the packages required for building:
-
-        setup-x86.exe --package-manager --wait --packages automake,pkg-config,make,gcc-core,libncurses-devel
-
-Build as under Unix:
-
-        ./bootstrap.sh && ./configure && make
-
-Finally, install the built binaries:
-
+        apt-get update; apt-get install -y automake libncurses5-dev libncursesw5-dev
+        ./bootstrap.sh
+        ./configure --without-gtk --disable-ipv6 --with-biliip
+        make -j8
         make install
 
+  如果需要ipip.net解析功能，请使用以下命令编译:
 
-WHERE CAN I GET THE LATEST VERSION OR MORE INFORMATION?
-===
+        apt-get update; apt-get install -y automake libncurses5-dev libncursesw5-dev libjson-c-dev
+        ./bootstrap.sh
+        ./configure --without-gtk --disable-ipv6 --with-ipdotnet
+        make -j8
+        make install
 
-mtr is now hosted on github.
-https://github.com/traviscross/mtr
+### 下载IP库  
+  下载以下地址中的数据文件放置至
+        
+        /usr/local/opt/mtr/biliip.dat
+        http://wsdownload.hdslb.net/BiliIP.dat.gz
 
-See the mtr web page at http://www.BitWizard.nl/mtr/
+        /usr/local/opt/mtr/ipdotnet.ipdb
+    
+  运行时使用以下两种方式：
+  
+        MTR_OPTIONS="-R" mtr
+        mtr -R
 
-Bug reports and feature requests should be submitted to the Github bug tracking system.
+## MAC 安装示例
+ * 原生 mtr 添加了 位置显示 和 DNS反向解析。
+### 编译环境准备
 
-Patches can be submitted by cloning the Github repository and issuing
-a pull request, or by email to me. Please use unified diffs. Usually
-the diff is sort of messy, so please check that the diff is clean and
-doesn't contain too much of your local stuff (for example, I don't
-want/need the "configure" script that /your/ automake made for you).
+>    ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
-(There used to be a mailinglist, but all it got was spam. So
-when the server was upgraded, the mailing list died.)
+    brew install automake
+    brew install wget
+    brew install gtk+
+    brew install json-c
+    ln -s /usr/local/Cellar/json-c/0.13.1/include/json-c/ /usr/local/Cellar/json-c/0.13.1/include/json-c/json
 
+### 下载源码
 
-REW
+    git clone https://github.com/Bilibili/mtr
 
+### 编译安装 (biliIP 版本)
+
+    cd mtr
+    ./bootstrap.sh 
+    ./configure --without-gtk --disable-ipv6 --with-biliip 
+    make -j8
+    sudo bash -c 'cp mtr /usr/local/bin && mkdir /opt/mtr && chmod +s /usr/local/bin/mtr && mkdir -p /usr/local/opt/mtr && wget http://wsdownload.hdslb.net/BiliIP.dat.gz -O - | gzip -dc > /usr/local/opt/mtrBiliIP.dat'
+
+### 编译安装 (ipip.net 版本)
+
+    cd mtr
+    ./bootstrap.sh 
+    ./configure --without-gtk --disable-ipv6 --with-ipdotnet 
+    make -j8
+    sudo bash -c 'cp mtr /usr/local/bin && mkdir /opt/mtr && chmod +s /usr/local/bin/mtr && mkdir -p /usr/local/opt/mtr 
+
+    自行下载ipip.net数据库井放置于/usr/local/opt/mtr/ipdotnet.ipdb
+
+### Show一把
+#### 原生
+
+    sudo mtr www.bilibili.com
+
+#### 扩展
+
+    sudo mtr -R www.bilibili.com
+
+#### 感谢
+
+    IP库国家/城市数据来源：http://www.ipip.net/ 免费版
+    IP库ISP来源：QQWry / 新浪公开IP查询库
+
+#### 截图
+
+![MAC运行截图](http://ww1.sinaimg.cn/large/64bb76b9gw1ev01oyul45j20pd0b441o.jpg)
