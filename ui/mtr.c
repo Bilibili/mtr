@@ -798,6 +798,7 @@ int main(
     ctl.probe_timeout = 10 * 1000000;
     ctl.ipinfo_no = -1;
     ctl.ipinfo_max = -1;
+    ctl.biliip_BASE_PTR = 5;
     xstrncpy(ctl.fld_active, "LS NABWV", 2 * MAXFLD);
 
     setlocale(LC_ALL,"");

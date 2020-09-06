@@ -118,6 +118,7 @@ struct mtr_ctl {
     ipdb_reader *reader;
 #endif
 #ifdef ENABLE_BILIIP
+    int biliip_BASE_PTR;
     struct bb_biliip *biliip;
 #endif
     int ipinfo_no;
